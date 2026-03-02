@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;600;700&family=Inter:wght@400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --citywire-blue: #4EB5E8;
+    --citywire-blue-hover: #3A94C7;
+    --citywire-dark-blue: #0A1628;
+    --background: 220 16% 7%;
+    --foreground: 214 10% 90%;
+    --card: 222 15% 12%;
+    --card-foreground: 214 10% 90%;
+    --popover: 222 15% 12%;
+    --popover-foreground: 214 10% 90%;
+    --primary: 347 100% 33%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 15% 14%;
+    --secondary-foreground: 214 10% 90%;
+    --muted: 222 15% 14%;
+    --muted-foreground: 220 9% 70%;
+    --accent: 222 13% 17%;
+    --accent-foreground: 214 10% 90%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 223 12% 22%;
+    --input: 223 12% 22%;
+    --ring: 347 100% 33%;
+    --radius: 0.5rem;
+  }
+}
+
+/* Dark scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: hsl(222 15% 12%); }
+::-webkit-scrollbar-thumb { background: hsl(223 12% 22%); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(223 12% 28%); }
+
+/* Hide scrollbar for carousel components */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Make calendar/time picker icons visible on dark backgrounds */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Red Hat Text', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Red Hat Display', sans-serif;
+  }
+}
