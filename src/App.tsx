@@ -18,6 +18,7 @@ import { useEvents } from './hooks/use-events';
 import { useTransactions } from './hooks/use-transactions';
 import { useEquipmentStatus } from './hooks/use-equipment-status';
 import { useReservations } from './hooks/use-reservations';
+import { useDateAvailability } from './hooks/use-date-availability';
 import { useToast } from './hooks/use-toast';
 import type { EquipmentWithUnits, CaseItem } from './types';
 
@@ -27,7 +28,8 @@ function App() {
   const { events, createEvent, updateEventEnd, deleteEvent } = useEvents();
   const { checkedOutGear, refreshCheckedOutGear } = useTransactions(user?.id);
   const { equipmentStatus, refreshStatus } = useEquipmentStatus();
-  const { reservations, myReservations, upsertReservation, removeReservation, clearMyReservations, wasAutoCleared, resetAutoCleared } = useReservations(user?.id);
+  const { reservations, myReservations, upsertReservation, removeReservation, clearMyReservations, updateReservationDates, wasAutoCleared, resetAutoCleared } = useReservations(user?.id);
+  const { getOverlaps, reservationAffectsToday } = useDateAvailability(equipment, reservations, equipmentStatus);
   const { toast } = useToast();
 
   // Re-fetch equipment status after user authenticates (RLS requires auth)
@@ -84,24 +86,32 @@ function App() {
     });
   };
 
-  // Equipment with availability adjusted by ALL active reservations
+  // Equipment with availability adjusted by reservations that affect TODAY
   const adjustedEquipment = useMemo(() => {
     return equipment.map((eq) => {
       const totalReserved = reservations
-        .filter((r) => r.equipment_id === eq.id)
+        .filter((r) => r.equipment_id === eq.id && reservationAffectsToday(r))
         .reduce((sum, r) => sum + r.quantity, 0);
       return { ...eq, available_count: Math.max(0, eq.available_count - totalReserved) };
     });
-  }, [equipment, reservations]);
+  }, [equipment, reservations, reservationAffectsToday]);
 
-  // Derive caseItems from DB reservations + equipment data
+  // Derive caseItems from DB reservations + equipment data (date-overlap-aware)
   const caseItems: CaseItem[] = useMemo(() => {
     return myReservations
       .map((res) => {
         const eq = equipment.find((e) => e.id === res.equipment_id);
         if (!eq) return null;
+        // Only count other users' reservations that overlap MY dates (or all if no dates)
         const othersReserved = reservations
-          .filter((r) => r.equipment_id === res.equipment_id && r.user_id !== user?.id)
+          .filter((r) => {
+            if (r.equipment_id !== res.equipment_id || r.user_id === user?.id) return false;
+            if (res.start_date && res.end_date && r.start_date && r.end_date) {
+              return res.start_date.split('T')[0] <= r.end_date.split('T')[0] &&
+                     res.end_date.split('T')[0] >= r.start_date.split('T')[0];
+            }
+            return true; // no dates on either side = assume conflict
+          })
           .reduce((sum, r) => sum + r.quantity, 0);
         const maxForMe = Math.max(0, eq.available_count - othersReserved);
         return {
@@ -114,6 +124,16 @@ function App() {
       })
       .filter(Boolean) as CaseItem[];
   }, [myReservations, equipment, reservations, user?.id]);
+
+  // Compute overlap warnings for items in the user's case
+  const caseOverlaps = useMemo(() => {
+    if (!user || myReservations.length === 0) return [];
+    const firstWithDates = myReservations.find((r) => r.start_date && r.end_date);
+    if (!firstWithDates) return [];
+    return myReservations.flatMap((res) =>
+      getOverlaps(res.equipment_id, firstWithDates.start_date!, firstWithDates.end_date!, user.id)
+    );
+  }, [myReservations, getOverlaps, user]);
 
   // Close drawer when navigating away from Inventory
   useEffect(() => {
@@ -319,6 +339,7 @@ function App() {
         onSuccess={handleCheckOutSuccess}
         onCreateEvent={createEvent}
         onDeleteEvent={deleteEvent}
+        getOverlaps={getOverlaps}
       />
 
       <EquipmentCase
@@ -334,6 +355,8 @@ function App() {
         onSuccess={handleCaseCheckOutSuccess}
         onCreateEvent={createEvent}
         onDeleteEvent={deleteEvent}
+        onUpdateReservationDates={updateReservationDates}
+        overlaps={caseOverlaps}
       />
 
       <Toaster />

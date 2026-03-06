@@ -96,7 +96,7 @@ export function useReservations(userId: string | undefined) {
   }, [userId, reservations]);
 
   const upsertReservation = useCallback(
-    async (equipmentId: string, quantity: number) => {
+    async (equipmentId: string, quantity: number, startDate?: string, endDate?: string) => {
       if (!userId) return { error: new Error('Not authenticated') };
 
       const expiresAt = new Date(Date.now() + RESERVATION_TTL_MS).toISOString();
@@ -109,6 +109,8 @@ export function useReservations(userId: string | undefined) {
             equipment_id: equipmentId,
             quantity,
             expires_at: expiresAt,
+            start_date: startDate || null,
+            end_date: endDate || null,
           },
           { onConflict: 'user_id,equipment_id' }
         );
@@ -147,6 +149,21 @@ export function useReservations(userId: string | undefined) {
     return { error };
   }, [userId, fetchReservations]);
 
+  const updateReservationDates = useCallback(
+    async (startDate: string, endDate: string) => {
+      if (!userId) return { error: new Error('Not authenticated') };
+
+      const { error } = await supabase
+        .from('reservations')
+        .update({ start_date: startDate, end_date: endDate })
+        .eq('user_id', userId);
+
+      if (!error) await fetchReservations();
+      return { error };
+    },
+    [userId, fetchReservations]
+  );
+
   const myReservations = reservations.filter((r) => r.user_id === userId);
 
   return {
@@ -156,6 +173,7 @@ export function useReservations(userId: string | undefined) {
     upsertReservation,
     removeReservation,
     clearMyReservations,
+    updateReservationDates,
     refreshReservations: fetchReservations,
     wasAutoCleared,
     resetAutoCleared: () => setWasAutoCleared(false),

@@ -92,6 +92,15 @@ export interface CaseItem {
   maxAvailable: number;
 }
 
+export interface DateOverlap {
+  equipmentId: string;
+  equipmentName: string;
+  conflictingUserName: string;
+  startDate: string;
+  endDate: string;
+  source: 'reservation' | 'checkout';
+}
+
 export interface CheckInFormData {
   unitIds: string[];
   eventId: string;

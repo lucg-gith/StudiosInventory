@@ -3,11 +3,11 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { X, Minus, Plus, Trash2, Briefcase } from 'lucide-react';
+import { X, Minus, Plus, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '../../lib/supabase';
-import type { CaseItem, EquipmentWithUnits, Event } from '../../types';
+import type { CaseItem, EquipmentWithUnits, Event, DateOverlap } from '../../types';
 
 interface EquipmentCaseProps {
   open: boolean;
@@ -28,6 +28,8 @@ interface EquipmentCaseProps {
     endTimePeriod?: 'AM' | 'PM'
   ) => Promise<{ data: Event | null; error: any }>;
   onDeleteEvent: (eventId: string) => Promise<{ error: any }>;
+  onUpdateReservationDates?: (startDate: string, endDate: string) => Promise<{ error: any }>;
+  overlaps?: DateOverlap[];
 }
 
 export function EquipmentCase({
@@ -43,6 +45,8 @@ export function EquipmentCase({
   onSuccess,
   onCreateEvent,
   onDeleteEvent,
+  onUpdateReservationDates,
+  overlaps,
 }: EquipmentCaseProps) {
   const [selectedEventId, setSelectedEventId] = useState<string>('new');
   const [newEventName, setNewEventName] = useState('');
@@ -85,6 +89,13 @@ export function EquipmentCase({
       document.body.style.overflow = '';
     };
   }, [open]);
+
+  // Propagate dates to reservation rows so other users see date-aware availability
+  useEffect(() => {
+    if (startDate && returnDate && onUpdateReservationDates) {
+      onUpdateReservationDates(startDate, returnDate);
+    }
+  }, [startDate, returnDate]);
 
   const totalItems = caseItems.reduce((sum, c) => sum + c.quantity, 0);
 
@@ -394,6 +405,23 @@ export function EquipmentCase({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {overlaps && overlaps.length > 0 && (
+                  <div className="rounded-lg border border-orange-500/50 bg-orange-950/30 p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                      <span className="font-semibold text-orange-400 text-sm">Scheduling Conflicts</span>
+                    </div>
+                    {overlaps.map((overlap, i) => (
+                      <p key={i} className="text-sm text-orange-300">
+                        <strong>{overlap.equipmentName}</strong> overlaps with{' '}
+                        <strong>{overlap.conflictingUserName}</strong>'s{' '}
+                        {overlap.source === 'checkout' ? 'checkout' : 'reservation'} from{' '}
+                        {overlap.startDate} to {overlap.endDate}
+                      </p>
+                    ))}
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <Button

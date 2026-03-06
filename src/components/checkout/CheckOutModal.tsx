@@ -10,10 +10,10 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '../../lib/supabase';
-import type { EquipmentWithUnits, Event } from '../../types';
+import type { EquipmentWithUnits, Event, DateOverlap } from '../../types';
 
 interface CheckOutModalProps {
   open: boolean;
@@ -24,6 +24,7 @@ interface CheckOutModalProps {
   onSuccess: () => void;
   onCreateEvent: (projectName: string, startDate: Date, timePeriod?: 'AM' | 'PM', endDate?: Date, endTimePeriod?: 'AM' | 'PM') => Promise<{ data: Event | null; error: any }>;
   onDeleteEvent: (eventId: string) => Promise<{ error: any }>;
+  getOverlaps?: (equipmentId: string, startDate: string, endDate: string, userId: string) => DateOverlap[];
 }
 
 export function CheckOutModal({
@@ -35,6 +36,7 @@ export function CheckOutModal({
   onSuccess,
   onCreateEvent,
   onDeleteEvent,
+  getOverlaps: getOverlapsFn,
 }: CheckOutModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string>('new');
@@ -57,6 +59,11 @@ export function CheckOutModal({
       setReturnTimePeriod('AM');
     }
   }, [open]);
+
+  // Compute overlaps for the selected equipment and date range
+  const modalOverlaps = equipment && startDate && returnDate && getOverlapsFn
+    ? getOverlapsFn(equipment.id, startDate, returnDate, userId)
+    : [];
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm('Delete this project? Associated checkout history will also be removed.')) return;
@@ -275,6 +282,22 @@ export function CheckOutModal({
               </SelectContent>
             </Select>
           </div>
+
+          {modalOverlaps.length > 0 && (
+            <div className="rounded-lg border border-orange-500/50 bg-orange-950/30 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                <span className="font-semibold text-orange-400 text-sm">Scheduling Conflicts</span>
+              </div>
+              {modalOverlaps.map((overlap, i) => (
+                <p key={i} className="text-sm text-orange-300">
+                  Overlaps with <strong>{overlap.conflictingUserName}</strong>'s{' '}
+                  {overlap.source === 'checkout' ? 'checkout' : 'reservation'} from{' '}
+                  {overlap.startDate} to {overlap.endDate}
+                </p>
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>

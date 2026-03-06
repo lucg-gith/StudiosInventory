@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-interface CheckedOutUnit {
+export interface CheckedOutUnit {
   unit_id: string;
   unit_number: string;
   user_id: string;
@@ -9,6 +9,7 @@ interface CheckedOutUnit {
   user_email: string;
   event_name: string;
   checkout_date: string;
+  start_date: string;
   return_date: string | null;
 }
 
@@ -137,6 +138,7 @@ export function useEquipmentStatus() {
               user_email: userProfile.email || "",
               event_name: event?.project_name || "Unknown project",
               checkout_date: tx.timestamp,
+              start_date: event?.start_date || tx.timestamp,
               return_date: event?.end_date,
             });
           }
