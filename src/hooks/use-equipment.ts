@@ -96,6 +96,7 @@ export function useEquipment() {
       .insert(units);
 
     if (unitsError) return { error: unitsError };
+    await fetchEquipment();
     return { error: null };
   };
 
@@ -105,6 +106,7 @@ export function useEquipment() {
       .update({ name, category })
       .eq('id', id);
 
+    if (!error) await fetchEquipment();
     return { error };
   };
 
@@ -127,6 +129,7 @@ export function useEquipment() {
       .delete()
       .eq('id', id);
 
+    if (!error) await fetchEquipment();
     return { error };
   };
 
@@ -159,6 +162,7 @@ export function useEquipment() {
       .update({ total_quantity: (existingUnits?.length || 0) + count })
       .eq('id', equipmentId);
 
+    if (!eqError) await fetchEquipment();
     return { error: eqError };
   };
 
@@ -193,6 +197,7 @@ export function useEquipment() {
       .update({ total_quantity: remaining?.length || 0 })
       .eq('id', unit.equipment_id);
 
+    if (!eqError) await fetchEquipment();
     return { error: eqError };
   };
 
@@ -239,6 +244,7 @@ export function useEquipment() {
         image_url: imageUrl,
       });
 
+    if (!logError) await fetchEquipment();
     return { error: logError };
   };
 
@@ -261,6 +267,7 @@ export function useEquipment() {
       .eq('unit_id', unitId)
       .eq('status', 'pending');
 
+    if (!logError) await fetchEquipment();
     return { error: logError };
   };
 

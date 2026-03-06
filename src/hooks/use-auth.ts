@@ -20,13 +20,18 @@ export function useAuth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
         setLoading(false);
+      }
+
+      // Clean up auth fragments from URL after Supabase processes them
+      if (window.location.hash || window.location.search.includes('error')) {
+        window.history.replaceState(null, '', window.location.pathname);
       }
     });
 
