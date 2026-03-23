@@ -1,13 +1,15 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { ChevronLeft, ChevronRight, Users, User, CalendarClock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users, User, CalendarClock, RotateCcw } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import type { EquipmentStatus } from '../../hooks/use-equipment-status';
 
 // ── Types ────────────────────────────────────────
 
 interface TeamKitItem {
+  unit_id: string;
+  event_id: string;
   equipment_name: string;
   equipment_category: string;
   unit_number: string;
@@ -57,6 +59,8 @@ export function groupByUser(
 
       const kit = userMap.get(unit.user_id)!;
       kit.items.push({
+        unit_id: unit.unit_id,
+        event_id: unit.event_id,
         equipment_name: equipment.equipment_name,
         equipment_category: equipment.equipment_category,
         unit_number: unit.unit_number,
@@ -91,7 +95,7 @@ export function groupByUser(
 
 // ── Card sub-component ───────────────────────────
 
-export function TeamKitCard({ kit }: { kit: TeamKit }) {
+export function TeamKitCard({ kit, onReturnKit }: { kit: TeamKit; onReturnKit?: (kit: TeamKit) => void }) {
   return (
     <Card className="min-w-[300px] max-w-[340px] flex-shrink-0 snap-start">
       <CardHeader className="pb-3">
@@ -127,20 +131,45 @@ export function TeamKitCard({ kit }: { kit: TeamKit }) {
             </div>
           ))}
         </div>
-        <div className="mt-3 pt-2 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CalendarClock className="h-3.5 w-3.5 flex-shrink-0" />
-          {kit.items.some((i) => i.return_date) ? (
-            <span>
-              Expected return: <span className="text-foreground font-medium">{formatDate(
-                kit.items
-                  .filter((i) => i.return_date)
-                  .map((i) => i.return_date!)
-                  .sort()
-                  .pop()!
-              )}</span>
-            </span>
-          ) : (
-            <span>No return date set</span>
+        <div className="mt-3 pt-2 border-t flex items-center justify-between">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <CalendarClock className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>
+                Out: <span className="text-foreground font-medium">{formatDate(
+                  kit.items
+                    .map((i) => i.checkout_date)
+                    .sort()
+                    .shift()! // Earliest checkout date
+                )}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 pl-5">
+              {kit.items.some((i) => i.return_date) ? (
+                <span>
+                  Return: <span className="text-foreground font-medium">{formatDate(
+                    kit.items
+                      .filter((i) => i.return_date)
+                      .map((i) => i.return_date!)
+                      .sort()
+                      .pop()! // Latest return date
+                  )}</span>
+                </span>
+              ) : (
+                <span>No return date set</span>
+              )}
+            </div>
+          </div>
+          {onReturnKit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={() => onReturnKit(kit)}
+            >
+              <RotateCcw className="h-3 w-3" />
+              Return
+            </Button>
           )}
         </div>
       </CardContent>
@@ -154,12 +183,14 @@ interface TeamKitsCarouselProps {
   equipmentStatus: EquipmentStatus[];
   currentUserId: string;
   loading: boolean;
+  onReturnKit?: (kit: TeamKit) => void;
 }
 
 export function TeamKitsCarousel({
   equipmentStatus,
   currentUserId,
   loading,
+  onReturnKit,
 }: TeamKitsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -232,7 +263,7 @@ export function TeamKitsCarousel({
         style={{ scrollbarWidth: 'none' }}
       >
         {teamKits.map((kit) => (
-          <TeamKitCard key={kit.user_id} kit={kit} />
+          <TeamKitCard key={kit.user_id} kit={kit} onReturnKit={onReturnKit} />
         ))}
       </div>
     </div>

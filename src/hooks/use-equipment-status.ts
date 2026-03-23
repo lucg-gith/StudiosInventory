@@ -7,6 +7,7 @@ export interface CheckedOutUnit {
   user_id: string;
   user_name: string;
   user_email: string;
+  event_id: string;
   event_name: string;
   checkout_date: string;
   start_date: string;
@@ -136,6 +137,7 @@ export function useEquipmentStatus() {
               user_id: userProfile.id,
               user_name: userProfile.full_name,
               user_email: userProfile.email || "",
+              event_id: tx.event_id,
               event_name: event?.project_name || "Unknown project",
               checkout_date: tx.timestamp,
               start_date: event?.start_date || tx.timestamp,

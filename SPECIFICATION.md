@@ -10,6 +10,7 @@
 7. [API Integration](#api-integration)
 8. [Security](#security)
 9. [Deployment](#deployment)
+10. [Key Technical Patterns](#key-technical-patterns)
 
 ---
 
@@ -26,6 +27,11 @@ Professional equipment inventory management system for Citywire Studios to track
 - Bulk equipment return functionality
 - Maintenance issue reporting with photo uploads
 - Role-based access control (standard users vs managers)
+- Equipment case with soft reservations (real-time cross-user sync)
+- Date-aware availability (future bookings don't block today)
+- Overlap detection with user-facing warnings
+- Password reset via email
+- Equipment CRUD management (add/edit/delete equipment & units)
 
 ### Technology Stack
 - **Frontend**: React 18.3.1 + TypeScript 5.3.3
@@ -92,8 +98,15 @@ User Action → Component → Custom Hook → Supabase Client → PostgreSQL
 3. Default role: 'user'
 4. Managers manually upgraded in database
 
+#### Password Reset
+1. User clicks "Forgot Password?" on login screen
+2. Enters email address
+3. Supabase sends password reset email with link
+4. Link redirects back to app, `onAuthStateChange` handles the redirect
+5. Auth URL fragments/errors cleaned up via `window.history.replaceState`
+
 #### Implementation
-- **Hook**: `src/hooks/use-auth.ts`
+- **Hook**: `src/hooks/use-auth.ts` (signIn, signUp, signOut, resetPassword)
 - **Component**: `src/components/auth/AuthForm.tsx`
 - **Security**: Row Level Security (RLS) policies enforce role-based access
 
@@ -339,7 +352,217 @@ for (const group of selectedGroups) {
 
 ---
 
-### 7. Transaction History
+### 7. Equipment Case & Soft Reservations
+
+#### Purpose
+Allow users to "build a kit" by adding multiple items to a case before checking them all out in one batch. Reservations are backed by the database and visible to all users in real-time.
+
+#### User Flow
+1. User browses equipment and clicks "Add to Case" on desired items
+2. Case drawer opens showing selected items with quantities
+3. User adjusts quantities or removes items
+4. User sets start/return dates (propagated to all reservation rows)
+5. Overlap warnings appear if dates conflict with other users' bookings
+6. User clicks "Check Out" to complete the batch checkout
+7. All items checked out, reservations cleared
+
+#### Real-Time Cross-User Sync
+- Each "Add to Case" creates/updates a row in `reservations` table
+- Supabase Realtime broadcasts changes to all connected users
+- Other users see reduced availability immediately
+- Heartbeat extends `expires_at` every 2 minutes while case is active
+
+#### Auto-Clear (8 Hours)
+- If a user's reservations are older than 8 hours (based on `created_at`), they are automatically deleted
+- Heartbeat interval checks oldest reservation age
+- Toast notification shown to the user: "Your equipment case was automatically cleared after 8 hours"
+- Prevents indefinite soft-locks on equipment
+
+#### Technical Details
+- **Component**: `src/components/checkout/EquipmentCase.tsx`
+- **Hook**: `src/hooks/use-reservations.ts`
+- **Constants**: `RESERVATION_TTL_MS = 30min`, `RESERVATION_MAX_AGE_MS = 8h`
+
+#### Database Operations
+```sql
+-- Add/update reservation
+INSERT INTO reservations (user_id, equipment_id, quantity, expires_at, start_date, end_date)
+VALUES ('user-uuid', 'equip-uuid', 2, NOW() + INTERVAL '30 minutes', '2026-03-18', '2026-03-25')
+ON CONFLICT (user_id, equipment_id)
+DO UPDATE SET quantity = EXCLUDED.quantity, expires_at = EXCLUDED.expires_at;
+
+-- Heartbeat extend
+UPDATE reservations SET expires_at = NOW() + INTERVAL '30 minutes'
+WHERE user_id = 'user-uuid';
+
+-- Clear case
+DELETE FROM reservations WHERE user_id = 'user-uuid';
+```
+
+---
+
+### 8. Date-Aware Availability & Overlap Detection
+
+#### Purpose
+Equipment checked out for future dates should remain "available" until those dates arrive. When booking dates overlap with another user's booking, show a warning.
+
+#### Date-Aware Availability Logic
+- Reservations with `start_date = NULL` (items just added to case, no dates set) -> block availability immediately
+- Reservations with `start_date`/`end_date` set -> only block availability if TODAY falls within that range
+- Implemented in `reservationAffectsToday()` function
+
+#### Overlap Detection
+When a user selects dates for checkout, the system checks for conflicts against:
+1. **Active checkouts** — other users' checked-out units from `equipmentStatus.checked_out_units`
+2. **Dated reservations** — other users' reservation rows with `start_date`/`end_date`
+
+**Overlap formula:** Two ranges [A_start, A_end] and [B_start, B_end] overlap when:
+```
+A_start <= B_end AND A_end >= B_start
+```
+
+#### Warning UI
+- Orange warning banner with AlertTriangle icon
+- Shows: "Overlaps with [UserName]'s [checkout/reservation] from [date] to [date]"
+- **Non-blocking** — user can still proceed (they might know the other person will return early)
+- Appears in both CheckOutModal and EquipmentCase
+
+#### User Name Resolution
+User names for overlap display are fetched from `user_profiles` table separately (PostgREST FK workaround). Results are cached in a `Map` to avoid repeated queries.
+
+#### Technical Details
+- **Hook**: `src/hooks/use-date-availability.ts`
+- **Type**: `DateOverlap` in `src/types/index.ts`
+- **Functions**:
+  - `getOverlaps(equipmentId, startDate, endDate, currentUserId)` -> `DateOverlap[]`
+  - `reservationAffectsToday(reservation)` -> `boolean`
+  - `getCheckedOutUnits(equipmentId)` -> `CheckedOutUnit[]`
+
+---
+
+### 9. Kits Dashboard (My Gear + Team Kits)
+
+#### Purpose
+Show all currently checked-out equipment grouped by user in a horizontally scrollable carousel.
+
+#### Layout
+- First card: "My Gear" — current user's checked-out equipment with check-in capabilities
+- Remaining cards: Team members' kits — read-only view of what other users have
+- Scroll arrows (left/right) appear on desktop
+- Snap-scroll behavior on mobile
+
+#### Technical Details
+- **Component**: `src/components/dashboard/TeamKitsCarousel.tsx` — `TeamKitCard` + `groupByUser()` helper
+- **Component**: `src/components/dashboard/CurrentGear.tsx` — My Gear with check-in/bulk-return
+- **Data Source**: `equipmentStatus` from `use-equipment-status.ts`
+
+---
+
+### 10. Proxy Return (Return on Behalf)
+
+#### Purpose
+Allow any user to return equipment on behalf of another user who is unavailable. This enables flexible equipment management when team members are off-site or unavailable to return gear themselves.
+
+#### User Flow
+1. User views the Team Kits carousel on the Inventory tab
+2. Each team member's kit card displays a "Return" button
+3. User clicks "Return" on a teammate's kit
+4. ProxyReturnModal opens showing:
+   - The teammate's name and email
+   - Complete list of items in their kit (unit numbers, equipment names, categories)
+   - Return date picker (defaults to today)
+   - Time period selector (AM/PM)
+5. User confirms the return
+6. All items in the kit are returned in a single batch operation
+7. Toast notification confirms success: "Returned X items on behalf of [User Name]"
+
+#### Technical Implementation
+
+**Component**: `src/components/dashboard/ProxyReturnModal.tsx`
+
+**Props**:
+```typescript
+interface ProxyReturnModalProps {
+  open: boolean;
+  onClose: () => void;
+  kit: TeamKit | null;
+  currentUserId: string;
+  currentUserName: string;
+  onSuccess: () => void;
+}
+```
+
+**Database Operations**:
+
+For each equipment item in the kit:
+1. Create CHECK_IN transaction with proxy metadata in notes field
+2. Update equipment_unit status to 'available'
+
+For each unique event in the kit:
+1. Update event end_date to selected return date + time period
+2. Store end_time_period in event notes JSON
+
+**Proxy Metadata Format**:
+```json
+{
+  "proxy_return": true,
+  "returned_by_user_id": "uuid-of-person-doing-return",
+  "returned_by_name": "John Smith"
+}
+```
+
+This metadata is stored in `transactions.notes` field for full audit trail compliance.
+
+#### Key Features
+- **Batch Operation**: Returns all items in a kit simultaneously
+- **Audit Trail**: Every transaction records who performed the return and on whose behalf
+- **Date Flexibility**: Can backdate or future-date returns as needed
+- **Event Management**: Automatically updates all associated event end dates
+- **User-Friendly**: Single click returns entire kit with minimal input
+
+#### Security Considerations
+- **Open Access**: Any authenticated user can return another user's equipment
+- **Audit Compliance**: All proxy returns are permanently logged in transactions table
+- **No Restrictions**: No role-based restrictions (by design for operational flexibility)
+- **Traceability**: Full chain of custody maintained through proxy metadata
+
+#### UI/UX Details
+- Modal displays scrollable list of items (max height with overflow)
+- Unit numbers shown as badges for easy identification
+- Categories displayed for context
+- Return date defaults to current date for quick operations
+- Informational note clarifies who is performing the return
+- Loading state during async operations
+- Error handling with toast notifications
+
+#### Integration Points
+- **Triggered From**: Team Kit cards in Kits carousel
+- **Data Source**: `equipmentStatus` grouped by user via `groupByUser()` helper
+- **Refreshes**: Equipment list, status dashboard, and checked-out gear after success
+- **State Management**: `proxyReturnKit` state in App.tsx
+
+---
+
+### 11. Equipment Manager (CRUD)
+
+#### Purpose
+Allow managers to add, edit, and delete equipment types and their individual units.
+
+#### Features
+- Add new equipment (name, category)
+- Edit equipment name and category
+- Delete equipment (cascades to units and transactions)
+- Add individual units to existing equipment
+- Delete individual units
+- Mark units as broken or repaired
+
+#### Technical Details
+- **Component**: `src/components/equipment-manager/EquipmentManager.tsx`
+- **Hook**: `src/hooks/use-equipment.ts` — CRUD mutations with manual refetch after each
+
+---
+
+### 12. Transaction History
 
 #### Features
 - Complete audit trail of all equipment movements
@@ -356,7 +579,7 @@ for (const group of selectedGroups) {
 
 ---
 
-### 8. Maintenance Portal (Managers Only)
+### 13. Maintenance Portal (Managers Only)
 
 #### Features
 - View all maintenance issues
@@ -500,7 +723,31 @@ CREATE TABLE maintenance_logs (
 
 ---
 
-#### 6. user_profiles
+#### 6. reservations
+Soft locks for equipment case items. Real-time synced across users.
+
+```sql
+CREATE TABLE reservations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  equipment_id UUID REFERENCES equipment(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE,
+  end_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, equipment_id)
+);
+```
+
+**Key Columns**:
+- `expires_at`: TTL for heartbeat-based cleanup (30-minute window, extended every 2 minutes)
+- `start_date`/`end_date`: Optional booking dates. NULL = blocks immediately; set = only blocks during range
+- `UNIQUE(user_id, equipment_id)`: One reservation per user per equipment type (upsert pattern)
+
+---
+
+#### 7. user_profiles
 Extended user information beyond Supabase Auth.
 
 ```sql
@@ -526,6 +773,8 @@ CREATE INDEX idx_transactions_event_id ON transactions(event_id);
 CREATE INDEX idx_transactions_timestamp ON transactions(timestamp DESC);
 CREATE INDEX idx_maintenance_unit_id ON maintenance_logs(unit_id);
 CREATE INDEX idx_maintenance_status ON maintenance_logs(status);
+CREATE INDEX idx_reservations_dates ON reservations(equipment_id, start_date, end_date)
+  WHERE start_date IS NOT NULL AND end_date IS NOT NULL;
 ```
 
 ---
@@ -608,16 +857,20 @@ graph TD
 src/
 ├── components/
 │   ├── auth/
-│   │   └── AuthForm.tsx              # Login/signup form
+│   │   └── AuthForm.tsx              # Login/signup/forgot-password form
 │   ├── dashboard/
 │   │   ├── DashboardLayout.tsx       # Main layout with nav
 │   │   ├── EquipmentList.tsx         # Browse all equipment
-│   │   ├── CurrentGear.tsx           # User's checked-out items
+│   │   ├── CurrentGear.tsx           # My Gear card
+│   │   ├── TeamKitsCarousel.tsx      # Team kits carousel + groupByUser
+│   │   ├── EquipmentStatusDashboard.tsx  # Status overview
 │   │   ├── CheckInModal.tsx          # Single item return
-│   │   ├── BulkCheckInModal.tsx      # Multi-item return
-│   │   └── EquipmentStatusDashboard.tsx  # Status overview
+│   │   └── BulkCheckInModal.tsx      # Multi-item return
 │   ├── checkout/
-│   │   └── CheckOutModal.tsx         # Checkout form
+│   │   ├── CheckOutModal.tsx         # Single-item checkout + overlap warnings
+│   │   └── EquipmentCase.tsx         # Batch checkout drawer + overlap warnings
+│   ├── equipment-manager/
+│   │   └── EquipmentManager.tsx      # CRUD for equipment & units
 │   ├── maintenance/
 │   │   └── MaintenancePortal.tsx     # Manager maintenance view
 │   ├── history/
@@ -629,20 +882,23 @@ src/
 │       ├── input.tsx
 │       ├── label.tsx
 │       ├── select.tsx
-│       └── toast.tsx
+│       ├── toast.tsx
+│       └── toaster.tsx
 ├── hooks/
-│   ├── use-auth.ts                   # Authentication
-│   ├── use-equipment.ts              # Equipment CRUD
+│   ├── use-auth.ts                   # Authentication + password reset
+│   ├── use-equipment.ts              # Equipment CRUD + mutations
 │   ├── use-equipment-status.ts       # Status dashboard data
 │   ├── use-events.ts                 # Events/projects CRUD
 │   ├── use-transactions.ts           # Checkout/checkin
+│   ├── use-reservations.ts           # Soft reservations + heartbeat + auto-clear
+│   ├── use-date-availability.ts      # Overlap detection + date-aware availability
 │   └── use-toast.ts                  # Toast notifications
 ├── lib/
 │   ├── supabase.ts                   # Supabase client
 │   └── utils.ts                      # Helper functions
 ├── types/
-│   ├── database.ts                   # Generated DB types
-│   └── index.ts                      # App types
+│   ├── database.ts                   # Supabase types (incl. reservations)
+│   └── index.ts                      # App types (DateOverlap, CaseItem, etc.)
 ├── App.tsx                           # Root component
 └── main.tsx                          # Entry point
 ```
@@ -658,7 +914,9 @@ interface CheckOutModalProps {
   events: Event[];
   userId: string;
   onSuccess: () => void;
-  onCreateEvent: (name: string, date: Date, period?: 'AM'|'PM') => Promise<{data: Event|null; error: any}>;
+  onCreateEvent: (name: string, date: Date, timePeriod?: 'AM'|'PM', endDate?: Date, endTimePeriod?: 'AM'|'PM') => Promise<{data: Event|null; error: any}>;
+  onDeleteEvent: (eventId: string) => Promise<{error: any}>;
+  getOverlaps?: (equipmentId: string, startDate: string, endDate: string, userId: string) => DateOverlap[];
 }
 ```
 
@@ -796,22 +1054,38 @@ npm run build
 
 Outputs to `dist/` directory.
 
+### Vercel Deployment (Current)
+1. Push to GitHub (master branch)
+2. Vercel auto-deploys on push
+3. Environment variables configured in Vercel dashboard:
+   - `VITE_SUPABASE_URL` — `https://<project-id>.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` — Supabase anonymous/public key
+4. `vercel.json` handles SPA routing:
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
 ### Environment Setup
 1. Create Supabase project
 2. Run migrations from `supabase/migrations/`
-3. Set up storage bucket: `maintenance-images`
-4. Configure environment variables
-5. Deploy frontend to hosting (Vercel, Netlify, etc.)
+3. Run additional SQL for reservations table (start_date, end_date columns)
+4. Set up storage bucket: `maintenance-images`
+5. Configure environment variables
+6. Deploy frontend to Vercel (auto-deploy from GitHub)
 
 ### Database Migrations
 ```bash
-# Run migrations
-supabase db push
+# Run migrations in Supabase SQL Editor
+# 001_initial_schema.sql — Core tables
+# 002_rls_policies.sql — Row Level Security
+# 003_seed_data.sql — Sample equipment
 
-# Or apply individually
-psql -f supabase/migrations/001_initial_schema.sql
-psql -f supabase/migrations/002_rls_policies.sql
-psql -f supabase/migrations/003_seed_data.sql
+# Additional migrations (run manually in SQL Editor):
+# - Add reservations table
+# - Add start_date/end_date to reservations
+# - Add broken status to unit_status enum
 ```
 
 ---
@@ -822,11 +1096,11 @@ psql -f supabase/migrations/003_seed_data.sql
 1. **QR Code Scanning**: Generate QR codes for units, scan to checkout/checkin
 2. **Notifications**: Email reminders for overdue equipment
 3. **Analytics Dashboard**: Equipment utilization metrics
-4. **Reservation System**: Book equipment in advance
+4. ~~**Reservation System**: Book equipment in advance~~ *(Implemented - Equipment Case with soft reservations)*
 5. **Mobile App**: React Native version for on-set use
 6. **Export Reports**: PDF/CSV export of transactions
 7. **Equipment Maintenance Schedule**: Preventive maintenance tracking
-8. **User Groups/Teams**: Assign equipment to teams not individuals
+8. ~~**User Groups/Teams**: Assign equipment to teams not individuals~~ *(Partially implemented - Team Kits carousel)*
 
 ### Technical Debt
 - Add comprehensive error boundary components
@@ -861,6 +1135,48 @@ psql -f supabase/migrations/003_seed_data.sql
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2024-12-15
+---
+
+## Key Technical Patterns
+
+### PostgREST FK Workaround
+`transactions.user_id` references `auth.users(id)`, NOT `user_profiles(id)`. PostgREST cannot auto-detect this indirect relationship, so joins like `.select('*, user_profiles(*)')` silently return null for `user_profiles`.
+
+**Fix**: Always fetch transactions with `.select('*')` (no joins), then query `user_profiles` separately by `user_id`. Use `Promise.all()` to parallelize.
+
+**Applied in**:
+- `src/components/history/TransactionHistory.tsx` — multi-step batch fetch
+- `src/hooks/use-equipment-status.ts` — per-unit separate queries
+- `src/hooks/use-date-availability.ts` — cached user name resolution
+
+### Mutation + Manual Refetch Pattern
+Supabase Realtime subscriptions are unreliable as the sole UI update mechanism. After every successful mutation, always call the fetch function manually:
+```typescript
+const { error } = await supabase.from('table').insert({...});
+if (!error) await fetchData(); // Always refetch after mutation
+```
+
+**Applied in**: `use-equipment.ts` (all 7 CRUD functions), `use-reservations.ts` (all mutation functions)
+
+### Reservation Lifecycle
+1. **Add to case**: `upsertReservation()` → creates row with 30-min TTL
+2. **Heartbeat**: Extends `expires_at` every 2 minutes while case has items
+3. **Set dates**: `updateReservationDates()` → batch-updates all user's reservations with start/end dates
+4. **Checkout**: `clearMyReservations()` → deletes all reservation rows
+5. **Auto-clear**: After 8 hours (based on oldest `created_at`), all reservations deleted with toast notification
+
+### Date Range Overlap Detection
+Two ranges [A_start, A_end] and [B_start, B_end] overlap when:
+```
+A_start <= B_end AND A_end >= B_start
+```
+Implemented in `use-date-availability.ts`. Runs client-side over in-memory arrays (fast for ~10 users). Day-level granularity (AM/PM ignored for overlap purposes).
+
+### Overflow & Tooltips
+Parent container with `overflow-hidden` in EquipmentStatusDashboard clips absolutely-positioned elements. CSS-only tooltips don't work inside it. Use inline text or React portals instead.
+
+---
+
+**Document Version**: 2.0
+**Last Updated**: 2026-03-06
 **Authors**: Citywire Studios Development Team

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Button } from '../ui/button';
-import { Package2, ArrowDownLeft } from 'lucide-react';
+import { Package2, ArrowDownLeft, Pencil } from 'lucide-react';
 import { CheckInModal } from './CheckInModal';
 import { BulkCheckInModal } from './BulkCheckInModal';
+import { InlineDateEditor } from './InlineDateEditor';
 import { formatDate, formatDateWithPeriod } from '../../lib/utils';
+import { useToast } from '../../hooks/use-toast';
 
 interface CheckedOutItem {
   unit_id: string;
@@ -14,6 +16,7 @@ interface CheckedOutItem {
   event_id: string;
   event_name: string;
   checkout_date: string;
+  return_date: string | null;
   event_notes: string | null;
 }
 
@@ -22,12 +25,15 @@ interface CurrentGearProps {
   userId: string;
   onCheckIn: () => void;
   onUpdateEventEnd?: (eventId: string, endDate: Date, timePeriod?: 'AM' | 'PM') => Promise<{ data: any; error: any }>;
+  onUpdateEventStart?: (eventId: string, startDate: Date, timePeriod?: 'AM' | 'PM') => Promise<{ data: any; error: any }>;
 }
 
-export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEnd }: CurrentGearProps) {
+export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEnd, onUpdateEventStart }: CurrentGearProps) {
   const [selectedGear, setSelectedGear] = useState<CheckedOutItem | null>(null);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [bulkReturnModalOpen, setBulkReturnModalOpen] = useState(false);
+  const [editingDates, setEditingDates] = useState<{ eventId: string; type: 'start' | 'end' } | null>(null);
+  const { toast } = useToast();
 
   // Flat grouping by equipment+event (needed for BulkCheckInModal compatibility)
   const groupedGear = checkedOutGear.reduce((acc, item) => {
@@ -54,6 +60,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
         event_name: item.event_name,
         event_id: item.event_id,
         checkout_date: item.checkout_date,
+        return_date: item.return_date,
         event_notes: item.event_notes,
         equipmentGroups: {} as Record<string, any>,
       };
@@ -110,13 +117,33 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
     onCheckIn();
   };
 
-  const formatCheckoutDate = (date: string, notes: string | null) => {
+  // Helper to format event dates (checkout or return) with time period
+  const formatEventDate = (date: string, notes: string | null, type: 'start' | 'end') => {
     try {
       const parsed = notes ? JSON.parse(notes) : {};
-      return formatDateWithPeriod(date, parsed.start_time_period);
+      const period = type === 'start' ? parsed.start_time_period : parsed.end_time_period;
+      return formatDateWithPeriod(date, period);
     } catch {
       return formatDate(date);
     }
+  };
+
+  // Helper to extract time period from event notes
+  const extractTimePeriod = (notes: string | null, type: 'start' | 'end'): 'AM' | 'PM' => {
+    try {
+      const parsed = notes ? JSON.parse(notes) : {};
+      return parsed[`${type}_time_period`] || 'PM';
+    } catch {
+      return 'PM';
+    }
+  };
+
+  // Helper to parse local date (consistent timezone handling)
+  const parseLocalDate = (dateString: string, timePeriod: 'AM' | 'PM') => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(timePeriod === 'AM' ? 9 : 17, 0, 0, 0);
+    return date;
   };
 
   const eventEntries = Object.entries(byEvent);
@@ -162,9 +189,104 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                   <div className="bg-muted px-4 py-3 border-b flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-foreground">{eventData.event_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Checked out: {formatCheckoutDate(eventData.checkout_date, eventData.event_notes)}
-                      </p>
+                      {editingDates?.eventId === eventId && editingDates.type === 'start' ? (
+                        <InlineDateEditor
+                          date={eventData.checkout_date}
+                          timePeriod={extractTimePeriod(eventData.event_notes, 'start')}
+                          label="Out"
+                          onSave={async (date, period) => {
+                            if (onUpdateEventStart) {
+                              try {
+                                const parsedDate = parseLocalDate(date, period);
+                                const { error } = await onUpdateEventStart(eventId, parsedDate, period);
+                                if (error) {
+                                  toast({
+                                    title: 'Error',
+                                    description: 'Failed to update start date. Please try again.',
+                                    variant: 'destructive',
+                                  });
+                                } else {
+                                  setEditingDates(null);
+                                  onCheckIn(); // Trigger refresh
+                                  toast({
+                                    title: 'Date updated',
+                                    description: 'Start date has been updated successfully.',
+                                  });
+                                }
+                              } catch (err) {
+                                toast({
+                                  title: 'Error',
+                                  description: 'Failed to update start date.',
+                                  variant: 'destructive',
+                                });
+                              }
+                            }
+                          }}
+                          onCancel={() => setEditingDates(null)}
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center gap-1.5 cursor-pointer group"
+                          onClick={() => setEditingDates({ eventId, type: 'start' })}
+                          title="Click to edit start date"
+                        >
+                          <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                            Out: {formatEventDate(eventData.checkout_date, eventData.event_notes, 'start')}
+                          </p>
+                          <Pencil className="h-3 w-3 text-muted-foreground group-hover:text-[#4EB5E8] transition-colors flex-shrink-0" />
+                        </div>
+                      )}
+
+                      {/* Return Date */}
+                      {eventData.return_date && (
+                        editingDates?.eventId === eventId && editingDates.type === 'end' ? (
+                          <InlineDateEditor
+                            date={eventData.return_date}
+                            timePeriod={extractTimePeriod(eventData.event_notes, 'end')}
+                            label="Return"
+                            onSave={async (date, period) => {
+                              if (onUpdateEventEnd) {
+                                try {
+                                  const parsedDate = parseLocalDate(date, period);
+                                  const { error } = await onUpdateEventEnd(eventId, parsedDate, period);
+                                  if (error) {
+                                    toast({
+                                      title: 'Error',
+                                      description: 'Failed to update return date. Please try again.',
+                                      variant: 'destructive',
+                                    });
+                                  } else {
+                                    setEditingDates(null);
+                                    onCheckIn(); // Trigger refresh
+                                    toast({
+                                      title: 'Date updated',
+                                      description: 'Return date has been updated successfully.',
+                                    });
+                                  }
+                                } catch (err) {
+                                  toast({
+                                    title: 'Error',
+                                    description: 'Failed to update return date.',
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }
+                            }}
+                            onCancel={() => setEditingDates(null)}
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center gap-1.5 cursor-pointer group"
+                            onClick={() => setEditingDates({ eventId, type: 'end' })}
+                            title="Click to edit return date"
+                          >
+                            <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                              Return: {formatEventDate(eventData.return_date, eventData.event_notes, 'end')}
+                            </p>
+                            <Pencil className="h-3 w-3 text-muted-foreground group-hover:text-[#4EB5E8] transition-colors flex-shrink-0" />
+                          </div>
+                        )
+                      )}
                     </div>
                     {eqEntries.length > 1 && (
                       <Button

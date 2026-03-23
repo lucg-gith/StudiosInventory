@@ -42,6 +42,14 @@ export function BulkCheckInModal({
     }
   }, [open]);
 
+  // Helper function to parse dates in local timezone
+  const parseLocalDate = (dateString: string, timePeriod: 'AM' | 'PM') => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(timePeriod === 'AM' ? 9 : 17, 0, 0, 0);
+    return date;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedGroups.length === 0) return;
@@ -53,7 +61,7 @@ export function BulkCheckInModal({
       for (const group of selectedGroups) {
         // Update event end time
         if (onUpdateEventEnd) {
-          await onUpdateEventEnd(group.event_id, new Date(endDate), endTimePeriod);
+          await onUpdateEventEnd(group.event_id, parseLocalDate(endDate, endTimePeriod), endTimePeriod);
         }
 
         // Check in all units in this group

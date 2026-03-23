@@ -36,6 +36,7 @@ export interface TransactionHistoryEntry extends BaseHistoryEntry {
   event: {
     project_name: string;
   };
+  notes?: string | null;
 }
 
 export interface MaintenanceHistoryEntry extends BaseHistoryEntry {

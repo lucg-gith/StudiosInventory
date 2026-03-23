@@ -10,6 +10,7 @@ interface CheckedOutItem {
   event_id: string;
   event_name: string;
   checkout_date: string;
+  return_date: string | null;
   event_notes: string | null;
 }
 
@@ -81,7 +82,8 @@ export function useTransactions(userId: string | undefined) {
               equipment_category: (unit.equipment as any).category,
               event_id: tx.event_id,
               event_name: (tx.events as any).project_name,
-              checkout_date: tx.timestamp,
+              checkout_date: (tx.events as any).start_date,
+              return_date: (tx.events as any).end_date,
               event_notes: (tx.events as any).notes,
             });
           }

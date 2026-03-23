@@ -100,6 +100,47 @@ export function useEvents() {
     }
   };
 
+  const updateEventStart = async (eventId: string, startDate: Date, timePeriod?: 'AM' | 'PM') => {
+    try {
+      const { data: existingEvent } = await supabase
+        .from('events')
+        .select('notes')
+        .eq('id', eventId)
+        .single();
+
+      let notes: Record<string, string> = {};
+      if (existingEvent?.notes) {
+        try {
+          notes = JSON.parse(existingEvent.notes);
+        } catch (parseError) {
+          console.error('Failed to parse event notes:', parseError);
+          notes = {};
+        }
+      }
+
+      if (timePeriod) {
+        notes.start_time_period = timePeriod;
+      }
+
+      const { data, error } = await supabase
+        .from('events')
+        .update({
+          start_date: startDate.toISOString(),
+          notes: JSON.stringify(notes),
+        })
+        .eq('id', eventId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      fetchEvents();
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error updating event start date:', error);
+      return { data: null, error };
+    }
+  };
+
   const deleteEvent = async (eventId: string) => {
     try {
       const { error } = await supabase
@@ -121,6 +162,7 @@ export function useEvents() {
     loading,
     createEvent,
     updateEventEnd,
+    updateEventStart,
     deleteEvent,
     refreshEvents: fetchEvents,
   };

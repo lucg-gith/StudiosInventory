@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
-import { Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Wrench } from 'lucide-react';
+import { Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Wrench, UserCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatDateTime, cn } from '../../lib/utils';
 import type {
@@ -127,7 +127,8 @@ export function TransactionHistory() {
           },
           event: {
             project_name: event?.project_name || 'Unknown'
-          }
+          },
+          notes: tx.notes,
         };
       });
 
@@ -270,6 +271,20 @@ export function TransactionHistory() {
                           <>
                             <ArrowUpCircle className="h-4 w-4 text-green-400" />
                             <span className="text-sm font-medium text-green-400">Check In</span>
+                            {isTransactionEntry(entry) && entry.notes && (() => {
+                              try {
+                                const parsed = JSON.parse(entry.notes!);
+                                if (parsed.proxy_return) {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">
+                                      <UserCheck className="h-3 w-3" />
+                                      by {parsed.returned_by_name}
+                                    </span>
+                                  );
+                                }
+                              } catch { /* not JSON */ }
+                              return null;
+                            })()}
                           </>
                         )}
                         {entry.type === 'MARKED_BROKEN' && (

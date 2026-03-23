@@ -4,6 +4,7 @@ import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { EquipmentList } from './components/dashboard/EquipmentList';
 import { CurrentGear } from './components/dashboard/CurrentGear';
 import { TeamKitCard, groupByUser } from './components/dashboard/TeamKitsCarousel';
+import { ProxyReturnModal } from './components/dashboard/ProxyReturnModal';
 import { EquipmentStatusDashboard } from './components/dashboard/EquipmentStatusDashboard';
 import { CheckOutModal } from './components/checkout/CheckOutModal';
 import { EquipmentCase } from './components/checkout/EquipmentCase';
@@ -25,7 +26,7 @@ import type { EquipmentWithUnits, CaseItem } from './types';
 function App() {
   const { user, profile, loading: authLoading, signIn, signUp, signOut, resetPassword } = useAuth();
   const { equipment, loading: equipmentLoading, refreshEquipment } = useEquipment();
-  const { events, createEvent, updateEventEnd, deleteEvent } = useEvents();
+  const { events, createEvent, updateEventEnd, updateEventStart, deleteEvent } = useEvents();
   const { checkedOutGear, refreshCheckedOutGear } = useTransactions(user?.id);
   const { equipmentStatus, refreshStatus } = useEquipmentStatus();
   const { reservations, myReservations, upsertReservation, removeReservation, clearMyReservations, updateReservationDates, wasAutoCleared, resetAutoCleared } = useReservations(user?.id);
@@ -55,6 +56,7 @@ function App() {
   const [checkOutModalOpen, setCheckOutModalOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentWithUnits | null>(null);
   const [caseOpen, setCaseOpen] = useState(false);
+  const [proxyReturnKit, setProxyReturnKit] = useState<any>(null);
 
   // Kits carousel scroll logic
   const kitsScrollRef = useRef<HTMLDivElement>(null);
@@ -299,9 +301,10 @@ function App() {
                   userId={user.id}
                   onCheckIn={handleCheckInSuccess}
                   onUpdateEventEnd={updateEventEnd}
+                  onUpdateEventStart={updateEventStart}
                 />
                 {teamKits.map((kit) => (
-                  <TeamKitCard key={kit.user_id} kit={kit} />
+                  <TeamKitCard key={kit.user_id} kit={kit} onReturnKit={setProxyReturnKit} />
                 ))}
               </div>
             </div>
@@ -357,6 +360,19 @@ function App() {
         onDeleteEvent={deleteEvent}
         onUpdateReservationDates={updateReservationDates}
         overlaps={caseOverlaps}
+      />
+
+      <ProxyReturnModal
+        open={!!proxyReturnKit}
+        onClose={() => setProxyReturnKit(null)}
+        kit={proxyReturnKit}
+        currentUserId={user?.id || ''}
+        currentUserName={profile?.full_name || profile?.email || 'Unknown'}
+        onSuccess={() => {
+          refreshEquipment();
+          refreshStatus();
+          refreshCheckedOutGear();
+        }}
       />
 
       <Toaster />

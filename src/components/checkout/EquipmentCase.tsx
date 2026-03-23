@@ -110,6 +110,14 @@ export function EquipmentCase({
     }
   };
 
+  // Helper function to parse dates in local timezone
+  const parseLocalDate = (dateString: string, timePeriod: 'AM' | 'PM') => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(timePeriod === 'AM' ? 9 : 17, 0, 0, 0);
+    return date;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (caseItems.length === 0) return;
@@ -128,9 +136,9 @@ export function EquipmentCase({
 
         const { data: newEvent, error: eventError } = await onCreateEvent(
           newEventName,
-          new Date(startDate),
+          parseLocalDate(startDate, startTimePeriod),
           startTimePeriod,
-          returnDate ? new Date(returnDate) : undefined,
+          returnDate ? parseLocalDate(returnDate, returnTimePeriod) : undefined,
           returnDate ? returnTimePeriod : undefined
         );
 
@@ -175,7 +183,7 @@ export function EquipmentCase({
       if (returnDate) {
         const { error: updateError } = await supabase
           .from('events')
-          .update({ end_date: new Date(returnDate).toISOString() })
+          .update({ end_date: parseLocalDate(returnDate, returnTimePeriod).toISOString() })
           .eq('id', eventId)
           .select()
           .single();

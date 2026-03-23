@@ -77,6 +77,14 @@ export function CheckInModal({ open, onClose, gearItem, userId, onSuccess, onUpd
     setImageFile(file);
   };
 
+  // Helper function to parse dates in local timezone
+  const parseLocalDate = (dateString: string, timePeriod: 'AM' | 'PM') => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(timePeriod === 'AM' ? 9 : 17, 0, 0, 0);
+    return date;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gearItem) return;
@@ -94,7 +102,7 @@ export function CheckInModal({ open, onClose, gearItem, userId, onSuccess, onUpd
 
     try {
       if (onUpdateEventEnd) {
-        await onUpdateEventEnd(gearItem.event_id, new Date(endDate), endTimePeriod);
+        await onUpdateEventEnd(gearItem.event_id, parseLocalDate(endDate, endTimePeriod), endTimePeriod);
       }
 
       await supabase.from('transactions').insert({
