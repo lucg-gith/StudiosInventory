@@ -151,7 +151,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
 
   return (
     <>
-      <div className="min-w-[60vw] max-w-[60vw] flex-shrink-0 snap-start border rounded-lg bg-card shadow-sm flex flex-col">
+      <div className="min-w-[45vw] max-w-[45vw] flex-shrink-0 snap-start border rounded-lg bg-card shadow-sm flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <div>
