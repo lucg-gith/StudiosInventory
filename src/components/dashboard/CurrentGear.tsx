@@ -186,7 +186,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
               return (
                 <div key={eventId} className="border rounded-lg overflow-hidden">
                   {/* Project header — shown once */}
-                  <div className="bg-muted px-4 py-3 border-b flex items-center justify-between">
+                  <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-foreground">{eventData.event_name}</p>
                       {editingDates?.eventId === eventId && editingDates.type === 'start' ? (
@@ -303,7 +303,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                   {eqEntries.map(([groupKey, group]: [string, any]) => (
                     <div
                       key={groupKey}
-                      className={`flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-accent transition-colors ${
+                      className={`flex items-center gap-2 px-3 py-1.5 border-b last:border-b-0 hover:bg-accent transition-colors ${
                         selectedGroups.has(groupKey) ? 'bg-red-950/30' : ''
                       }`}
                     >
@@ -312,25 +312,21 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                         type="checkbox"
                         checked={selectedGroups.has(groupKey)}
                         onChange={() => toggleGroupSelection(groupKey)}
-                        className="h-4 w-4 rounded border-border text-[#4EB5E8] focus:ring-[#4EB5E8] cursor-pointer flex-shrink-0"
+                        className="h-3.5 w-3.5 rounded border-border text-[#4EB5E8] focus:ring-[#4EB5E8] cursor-pointer flex-shrink-0"
                       />
 
                       {/* Equipment info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{group.equipment_name}</span>
-                          <span className="text-xs text-muted-foreground capitalize">{group.equipment_category}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {group.units.map((unit: any) => (
-                            <span
-                              key={unit.unit_id}
-                              className="px-1.5 py-0.5 bg-muted text-xs rounded text-muted-foreground"
-                            >
-                              {unit.unit_number}
-                            </span>
-                          ))}
-                        </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground text-sm">{group.equipment_name}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{group.equipment_category}</span>
+                        {group.units.map((unit: any) => (
+                          <span
+                            key={unit.unit_id}
+                            className="px-1.5 py-0.5 bg-muted text-xs rounded text-muted-foreground"
+                          >
+                            {unit.unit_number}
+                          </span>
+                        ))}
                       </div>
 
                       {/* Return single item */}
@@ -338,7 +334,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                         onClick={() => setSelectedGear(group.units[0])}
                         variant="outline"
                         size="sm"
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 h-7 text-xs"
                       >
                         Return
                       </Button>
