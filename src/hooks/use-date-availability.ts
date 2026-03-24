@@ -86,14 +86,18 @@ export function useDateAvailability(
       const eq = equipment.find((e) => e.id === equipmentId);
       if (!eq) return [];
 
+      const totalUnits = eq.units.length;
       const overlaps: DateOverlap[] = [];
 
-      // 1. Check active checkouts (from equipmentStatus)
+      // 1. Count checked-out units that overlap (by other users)
       const checkedOut = getCheckedOutUnits(equipmentId);
+      let overlappingCheckoutCount = 0;
+
       for (const unit of checkedOut) {
         if (unit.user_id === currentUserId) continue;
         if (rangesOverlap(startDate, endDate, unit.start_date, unit.return_date)) {
-          // Avoid duplicate overlap entries for the same user + same date range
+          overlappingCheckoutCount++;
+          // Collect overlap info for display (will filter at the end)
           const alreadyExists = overlaps.some(
             (o) =>
               o.conflictingUserName === unit.user_name &&
@@ -113,7 +117,7 @@ export function useDateAvailability(
         }
       }
 
-      // 2. Check other users' dated reservations
+      // 2. Count overlapping reservation quantities (by other users)
       const othersReservations = reservations.filter(
         (r) =>
           r.equipment_id === equipmentId &&
@@ -122,8 +126,11 @@ export function useDateAvailability(
           r.end_date
       );
 
+      let overlappingReservationQty = 0;
+
       for (const res of othersReservations) {
         if (rangesOverlap(startDate, endDate, res.start_date!, res.end_date!)) {
+          overlappingReservationQty += res.quantity || 1;
           const name = userNames[res.user_id] || 'Another user';
           overlaps.push({
             equipmentId,
@@ -136,7 +143,13 @@ export function useDateAvailability(
         }
       }
 
-      return overlaps;
+      // 3. Only warn if ALL units are taken during the overlap period
+      const totalInUse = overlappingCheckoutCount + overlappingReservationQty;
+      if (totalInUse >= totalUnits) {
+        return overlaps;
+      }
+
+      return []; // Units still available — no conflict
     },
     [equipment, reservations, equipmentStatus, getCheckedOutUnits, userNames]
   );
