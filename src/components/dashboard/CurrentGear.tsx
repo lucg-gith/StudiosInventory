@@ -180,7 +180,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
             <p className="text-sm text-muted-foreground">No equipment checked out</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto max-h-[350px] px-5 pb-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
             {eventEntries.map(([eventId, eventData]) => {
               const eqEntries = Object.entries(eventData.equipmentGroups);
               return (
