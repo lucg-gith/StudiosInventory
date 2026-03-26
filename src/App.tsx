@@ -10,6 +10,7 @@ import { CheckOutModal } from './components/checkout/CheckOutModal';
 import { EquipmentCase } from './components/checkout/EquipmentCase';
 import { EquipmentManager } from './components/equipment-manager/EquipmentManager';
 import { TransactionHistory } from './components/history/TransactionHistory';
+import { MetricsDashboard } from './components/metrics/MetricsDashboard';
 import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/toaster';
 import { Camera, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -52,7 +53,7 @@ function App() {
     }
   }, [wasAutoCleared]);
 
-  const [currentView, setCurrentView] = useState<'inventory' | 'history' | 'maintenance' | 'status'>('inventory');
+  const [currentView, setCurrentView] = useState<'inventory' | 'history' | 'maintenance' | 'status' | 'metrics'>('inventory');
   const [checkOutModalOpen, setCheckOutModalOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentWithUnits | null>(null);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -268,7 +269,7 @@ function App() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-foreground">Kits</h2>
-                <div className="hidden sm:flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="icon"
@@ -293,7 +294,7 @@ function App() {
               <div
                 ref={kitsScrollRef}
                 onScroll={updateKitsScroll}
-                className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 hide-scrollbar"
+                className="flex flex-col md:flex-row gap-4 md:overflow-x-auto md:scroll-smooth md:snap-x md:snap-mandatory pb-2 hide-scrollbar"
                 style={{ scrollbarWidth: 'none' }}
               >
                 <CurrentGear
@@ -331,6 +332,8 @@ function App() {
         {currentView === 'history' && <TransactionHistory />}
 
         {currentView === 'maintenance' && <EquipmentManager userId={user.id} />}
+
+        {currentView === 'metrics' && <MetricsDashboard />}
       </DashboardLayout>
 
       <CheckOutModal
