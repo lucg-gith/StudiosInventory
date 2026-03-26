@@ -225,7 +225,8 @@ export function TransactionHistory() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop: Table view */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted border-b">
                 <tr>
@@ -368,6 +369,112 @@ export function TransactionHistory() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile: Card view */}
+          <div className="md:hidden divide-y divide-border">
+            {filteredEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className={cn(
+                  "p-3 space-y-2",
+                  isMaintenanceEntry(entry) && "bg-amber-50/20 dark:bg-amber-950/10"
+                )}
+              >
+                {/* Top row: type badge + timestamp */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {entry.type === 'CHECK_OUT' && (
+                      <>
+                        <ArrowDownCircle className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-orange-400">Check Out</span>
+                      </>
+                    )}
+                    {entry.type === 'CHECK_IN' && (
+                      <>
+                        <ArrowUpCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-green-400">Check In</span>
+                        {isTransactionEntry(entry) && entry.notes && (() => {
+                          try {
+                            const parsed = JSON.parse(entry.notes!);
+                            if (parsed.proxy_return) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">
+                                  <UserCheck className="h-3 w-3" />
+                                  by {parsed.returned_by_name}
+                                </span>
+                              );
+                            }
+                          } catch { /* not JSON */ }
+                          return null;
+                        })()}
+                      </>
+                    )}
+                    {entry.type === 'MARKED_BROKEN' && (
+                      <>
+                        <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-red-500">Broken</span>
+                      </>
+                    )}
+                    {entry.type === 'MARKED_REPAIRED' && (
+                      <>
+                        <Wrench className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-green-600">Repaired</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                    {formatDateTime(entry.timestamp)}
+                  </span>
+                </div>
+
+                {/* Equipment + Unit */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{entry.unit.equipment.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {entry.unit.equipment.category}
+                    </p>
+                  </div>
+                  <span className="px-1.5 py-0.5 bg-muted text-xs rounded text-muted-foreground flex-shrink-0">
+                    {entry.unit.unit_number}
+                  </span>
+                </div>
+
+                {/* User */}
+                <p className="text-sm text-muted-foreground">
+                  {entry.user.full_name || entry.user.email}
+                </p>
+
+                {/* Details */}
+                {isTransactionEntry(entry) ? (
+                  <p className="text-xs text-muted-foreground">
+                    Project: {entry.event.project_name}
+                  </p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {entry.description || 'No description'}
+                    </p>
+                    {entry.location_held && (
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">
+                        📍 {entry.location_held}
+                      </p>
+                    )}
+                    {entry.image_url && (
+                      <a
+                        href={entry.image_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#4EB5E8] hover:underline mt-0.5 inline-block"
+                      >
+                        View Photo
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           {filteredEntries.length === 0 && (

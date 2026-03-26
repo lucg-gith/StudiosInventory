@@ -45,13 +45,17 @@ function EquipmentRow({ item, showCheckoutDetails }: { item: EquipmentStatus; sh
   return (
     <div className="border-b last:border-b-0">
       {/* Main row */}
-      <div className="flex items-center gap-4 px-4 py-3">
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3">
+        <div className="flex items-center justify-between w-full sm:w-auto sm:flex-1 min-w-0">
           <span className="font-medium text-foreground">{item.equipment_name}</span>
+          {/* StatusPill next to name on mobile, at far right on desktop */}
+          <span className="sm:hidden">
+            <StatusPill available={item.available_count} total={item.total_units} />
+          </span>
         </div>
 
         {/* Status counts */}
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
           <div className="flex items-center gap-1.5 text-green-400">
             <CheckCircle className="h-3.5 w-3.5" />
             <span>{item.available_count}</span>
@@ -60,7 +64,7 @@ function EquipmentRow({ item, showCheckoutDetails }: { item: EquipmentStatus; sh
             <Package className="h-3.5 w-3.5" />
             <span>{item.in_use_count}</span>
             {item.checked_out_units.length > 0 && (
-              <span className="text-xs text-muted-foreground font-normal truncate max-w-[350px]">
+              <span className="text-xs text-muted-foreground font-normal truncate hidden md:inline max-w-[350px]">
                 — {item.checked_out_units.map((u) =>
                   u.return_date
                     ? `${u.user_name} (return ${formatDateTime(u.return_date)})`
@@ -83,35 +87,44 @@ function EquipmentRow({ item, showCheckoutDetails }: { item: EquipmentStatus; sh
           )}
         </div>
 
-        <StatusPill available={item.available_count} total={item.total_units} />
+        <span className="hidden sm:inline-flex">
+          <StatusPill available={item.available_count} total={item.total_units} />
+        </span>
       </div>
 
       {/* Checked-out unit details */}
       {hasCheckouts && (
-        <div className="px-4 pb-3">
+        <div className="px-3 sm:px-4 pb-3">
           <div className="space-y-1.5">
             {item.checked_out_units.map((unit) => (
               <div
                 key={unit.unit_id}
-                className="flex items-center gap-2 text-sm bg-red-950/30 rounded px-3 py-1.5"
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 text-sm bg-red-950/30 rounded px-2 sm:px-3 py-2 sm:py-1.5"
               >
-                <User className="h-3.5 w-3.5 text-[#4EB5E8] flex-shrink-0" />
-                <span className="font-medium text-foreground flex-shrink-0">{unit.user_name}</span>
-                {unit.user_email && (
-                  <span
-                    className="text-muted-foreground text-xs truncate max-w-[180px]"
-                    title={unit.user_email}
-                  >
-                    ({unit.user_email})
+                <div className="flex items-center gap-2 flex-wrap">
+                  <User className="h-3.5 w-3.5 text-[#4EB5E8] flex-shrink-0" />
+                  <span className="font-medium text-foreground">{unit.user_name}</span>
+                  {unit.user_email && (
+                    <>
+                      <span className="text-muted-foreground hidden sm:inline">&middot;</span>
+                      <span
+                        className="text-muted-foreground text-xs truncate max-w-[180px]"
+                        title={unit.user_email}
+                      >
+                        ({unit.user_email})
+                      </span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap pl-5 sm:pl-0">
+                  <span className="text-muted-foreground hidden sm:inline">&middot;</span>
+                  <span className="text-muted-foreground truncate">{unit.event_name}</span>
+                  <span className="text-muted-foreground hidden sm:inline">&middot;</span>
+                  <span className={`text-xs whitespace-nowrap ${unit.return_date ? 'text-orange-400' : 'text-muted-foreground'}`}>
+                    {unit.return_date ? `Return ${formatDateTime(unit.return_date)}` : 'No return date'}
                   </span>
-                )}
-                <span className="text-muted-foreground">&middot;</span>
-                <span className="text-muted-foreground truncate">{unit.event_name}</span>
-                <span className="text-muted-foreground">&middot;</span>
-                <span className={`text-xs whitespace-nowrap ${unit.return_date ? 'text-orange-400' : 'text-muted-foreground'}`}>
-                  {unit.return_date ? `Return ${formatDateTime(unit.return_date)}` : 'No return date'}
-                </span>
-                <span className="ml-auto px-1.5 py-0.5 bg-muted text-xs rounded text-muted-foreground flex-shrink-0">
+                </div>
+                <span className="ml-0 sm:ml-auto mt-1 sm:mt-0 px-1.5 py-0.5 bg-muted text-xs rounded text-muted-foreground flex-shrink-0">
                   {unit.unit_number}
                 </span>
               </div>
@@ -169,22 +182,22 @@ export function EquipmentStatusDashboard() {
   const showCheckoutDetails = activeView !== 'available';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Equipment Status</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Equipment Status</h2>
         <span className="text-sm text-muted-foreground">
           {equipmentStatus.length} types &middot; {totalUnits} units
         </span>
       </div>
 
       {/* Summary bar — interactive toggle buttons */}
-      <div className="flex gap-4 px-4 py-3 bg-muted rounded-lg border">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4 px-3 sm:px-4 py-3 bg-muted rounded-lg border">
         {/* Available toggle */}
         <button
           onClick={() => toggleView('available')}
           className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-pointer',
+            'flex items-center gap-2 px-2 sm:px-3 py-3 sm:py-2 rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-0',
             activeView === 'available'
               ? 'bg-green-950 ring-2 ring-green-500'
               : 'hover:bg-green-950/50'
@@ -203,7 +216,7 @@ export function EquipmentStatusDashboard() {
         <button
           onClick={() => toggleView('in_use')}
           className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-pointer',
+            'flex items-center gap-2 px-2 sm:px-3 py-3 sm:py-2 rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-0',
             activeView === 'in_use'
               ? 'bg-blue-950 ring-2 ring-blue-500'
               : 'hover:bg-blue-950/50'
@@ -220,7 +233,7 @@ export function EquipmentStatusDashboard() {
 
         {/* Broken — static (no toggle) */}
         {totalBroken > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-3 sm:py-2">
             <div className="h-7 w-7 rounded-full bg-red-950 flex items-center justify-center">
               <AlertCircle className="h-3.5 w-3.5 text-red-400" />
             </div>
@@ -233,7 +246,7 @@ export function EquipmentStatusDashboard() {
 
         {/* Maintenance — static (no toggle) */}
         {totalMaintenance > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-3 sm:py-2">
             <div className="h-7 w-7 rounded-full bg-orange-950 flex items-center justify-center">
               <Wrench className="h-3.5 w-3.5 text-orange-400" />
             </div>
@@ -258,7 +271,7 @@ export function EquipmentStatusDashboard() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {categoryEntries.map(([category, items]) => (
             <div key={category}>
               {/* Category header */}

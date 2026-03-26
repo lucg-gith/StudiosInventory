@@ -288,7 +288,7 @@ export function EquipmentCase({
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-9 w-9 sm:h-7 sm:w-7"
                         onClick={() => onUpdateQuantity(item.equipmentId, item.quantity - 1)}
                         disabled={item.quantity <= 1}
                       >
@@ -298,7 +298,7 @@ export function EquipmentCase({
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-9 w-9 sm:h-7 sm:w-7"
                         onClick={() => onUpdateQuantity(item.equipmentId, item.quantity + 1)}
                         disabled={item.quantity >= item.maxAvailable}
                       >
@@ -309,7 +309,7 @@ export function EquipmentCase({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                      className="h-9 w-9 sm:h-7 sm:w-7 text-muted-foreground hover:text-red-400"
                       onClick={() => onRemoveItem(item.equipmentId)}
                     >
                       <Trash2 className="h-4 w-4" />

@@ -106,7 +106,7 @@ export function EquipmentList({ equipment, onCheckOut, caseItems = [], onAddToCa
               size="icon"
               onClick={() => handleViewModeChange('grid')}
               className={cn(
-                'h-9 w-9 rounded-none rounded-l-md',
+                'h-11 w-11 sm:h-9 sm:w-9 rounded-none rounded-l-md',
                 viewMode === 'grid' && 'bg-accent text-foreground hover:bg-accent hover:text-foreground'
               )}
             >
@@ -117,7 +117,7 @@ export function EquipmentList({ equipment, onCheckOut, caseItems = [], onAddToCa
               size="icon"
               onClick={() => handleViewModeChange('list')}
               className={cn(
-                'h-9 w-9 rounded-none rounded-r-md',
+                'h-11 w-11 sm:h-9 sm:w-9 rounded-none rounded-r-md',
                 viewMode === 'list' && 'bg-accent text-foreground hover:bg-accent hover:text-foreground'
               )}
             >
@@ -146,7 +146,7 @@ export function EquipmentList({ equipment, onCheckOut, caseItems = [], onAddToCa
             variant={selectedCategory === category ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSelectedCategory(category)}
-            className="capitalize"
+            className="capitalize min-h-[44px] sm:min-h-0"
           >
             {category}
           </Button>
@@ -195,7 +195,7 @@ export function EquipmentList({ equipment, onCheckOut, caseItems = [], onAddToCa
 
           {/* Grid view */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {items.map((item) => (
                 <Card key={item.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
@@ -248,59 +248,114 @@ export function EquipmentList({ equipment, onCheckOut, caseItems = [], onAddToCa
           {/* List view */}
           {viewMode === 'list' && (
             <div className="border rounded-lg overflow-hidden bg-card">
-              <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-2 bg-muted border-b text-sm font-medium text-muted-foreground">
+              {/* Desktop table header — hidden on mobile */}
+              <div className="hidden md:grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-2 bg-muted border-b text-sm font-medium text-muted-foreground">
                 <span className="w-32"></span>
                 <span>Name</span>
                 <span className="w-28 text-center">Category</span>
                 <span className="w-24 text-center">Available</span>
               </div>
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-3 border-b last:border-b-0 items-center hover:bg-accent transition-colors"
-                >
-                  <span className="w-32">
-                    {item.available_count === 0 ? (
-                      <Button disabled size="sm" className="w-full">
-                        Out of Stock
-                      </Button>
-                    ) : getCaseQuantity(item.id) > 0 ? (
-                      <Button
-                        onClick={() => handleItemAction(item.id)}
-                        variant="secondary"
-                        size="sm"
-                        className="w-full"
-                      >
-                        In Case ({getCaseQuantity(item.id)}) +
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => handleItemAction(item.id)}
-                        size="sm"
-                        className="w-full"
-                      >
-                        Add
-                      </Button>
-                    )}
-                  </span>
-                  <span className="font-medium text-foreground">{item.name}</span>
-                  <span className="w-28 text-center text-sm text-muted-foreground capitalize">{item.category}</span>
-                  <span className="w-24 text-center">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold',
-                        item.available_count === item.total_quantity
-                          ? 'bg-green-950 text-green-400'
-                          : item.available_count === 0
-                            ? 'bg-red-950 text-red-400'
-                            : 'bg-yellow-950 text-yellow-400'
+
+              {/* Desktop table rows — hidden on mobile */}
+              <div className="hidden md:block">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-3 border-b last:border-b-0 items-center hover:bg-accent transition-colors"
+                  >
+                    <span className="w-32">
+                      {item.available_count === 0 ? (
+                        <Button disabled size="sm" className="w-full">
+                          Out of Stock
+                        </Button>
+                      ) : getCaseQuantity(item.id) > 0 ? (
+                        <Button
+                          onClick={() => handleItemAction(item.id)}
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                        >
+                          In Case ({getCaseQuantity(item.id)}) +
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleItemAction(item.id)}
+                          size="sm"
+                          className="w-full"
+                        >
+                          Add
+                        </Button>
                       )}
-                    >
-                      {item.available_count} / {item.total_quantity}
                     </span>
-                  </span>
-                </div>
-              ))}
+                    <span className="font-medium text-foreground">{item.name}</span>
+                    <span className="w-28 text-center text-sm text-muted-foreground capitalize">{item.category}</span>
+                    <span className="w-24 text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold',
+                          item.available_count === item.total_quantity
+                            ? 'bg-green-950 text-green-400'
+                            : item.available_count === 0
+                              ? 'bg-red-950 text-red-400'
+                              : 'bg-yellow-950 text-yellow-400'
+                        )}
+                      >
+                        {item.available_count} / {item.total_quantity}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile card layout — hidden on desktop */}
+              <div className="md:hidden">
+                {items.map((item) => (
+                  <div key={item.id} className="border-b last:border-b-0 p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground">{item.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
+                      </div>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0',
+                          item.available_count === item.total_quantity
+                            ? 'bg-green-950 text-green-400'
+                            : item.available_count === 0
+                              ? 'bg-red-950 text-red-400'
+                              : 'bg-yellow-950 text-yellow-400'
+                        )}
+                      >
+                        {item.available_count} / {item.total_quantity}
+                      </span>
+                    </div>
+                    <div>
+                      {item.available_count === 0 ? (
+                        <Button disabled size="sm" className="w-full min-h-[44px]">
+                          Out of Stock
+                        </Button>
+                      ) : getCaseQuantity(item.id) > 0 ? (
+                        <Button
+                          onClick={() => handleItemAction(item.id)}
+                          variant="secondary"
+                          size="sm"
+                          className="w-full min-h-[44px]"
+                        >
+                          In Case ({getCaseQuantity(item.id)}) +
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleItemAction(item.id)}
+                          size="sm"
+                          className="w-full min-h-[44px]"
+                        >
+                          Add to Case
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

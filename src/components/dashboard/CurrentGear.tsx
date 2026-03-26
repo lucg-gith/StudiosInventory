@@ -151,21 +151,21 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
 
   return (
     <>
-      <div className="min-w-[40vw] max-w-[40vw] flex-shrink-0 snap-start border rounded-lg bg-card shadow-sm flex flex-col">
+      <div className="w-full md:min-w-[40vw] md:max-w-[40vw] flex-shrink-0 snap-start border rounded-lg bg-card shadow-sm flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <div>
             <h3 className="text-base font-semibold text-foreground">My Current Gear</h3>
             <p className="text-xs text-muted-foreground">{checkedOutGear.length} item{checkedOutGear.length !== 1 ? 's' : ''} out</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {selectedGroups.size > 0 && (
-              <Button onClick={handleReturnSelected} variant="outline" size="sm" className="h-7 text-xs">
+              <Button onClick={handleReturnSelected} variant="outline" size="sm" className="min-h-[44px] sm:min-h-0 h-8 sm:h-7 text-xs">
                 Return Selected ({selectedGroups.size})
               </Button>
             )}
             {hasGear && (
-              <Button onClick={handleReturnAll} className="bg-[#4EB5E8] hover:bg-[#3A94C7] h-7 text-xs" size="sm">
+              <Button onClick={handleReturnAll} className="bg-[#4EB5E8] hover:bg-[#3A94C7] min-h-[44px] sm:min-h-0 h-8 sm:h-7 text-xs" size="sm">
                 <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
                 Return All
               </Button>
@@ -312,7 +312,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                         type="checkbox"
                         checked={selectedGroups.has(groupKey)}
                         onChange={() => toggleGroupSelection(groupKey)}
-                        className="h-3.5 w-3.5 rounded border-border text-[#4EB5E8] focus:ring-[#4EB5E8] cursor-pointer flex-shrink-0"
+                        className="h-5 w-5 sm:h-3.5 sm:w-3.5 rounded border-border text-[#4EB5E8] focus:ring-[#4EB5E8] cursor-pointer flex-shrink-0"
                       />
 
                       {/* Equipment info */}
@@ -334,7 +334,7 @@ export function CurrentGear({ checkedOutGear, userId, onCheckIn, onUpdateEventEn
                         onClick={() => setSelectedGear(group.units[0])}
                         variant="outline"
                         size="sm"
-                        className="flex-shrink-0 h-7 text-xs"
+                        className="flex-shrink-0 min-h-[44px] sm:min-h-0 h-8 sm:h-7 text-xs"
                       >
                         Return
                       </Button>

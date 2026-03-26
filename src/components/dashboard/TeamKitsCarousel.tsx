@@ -97,7 +97,7 @@ export function groupByUser(
 
 export function TeamKitCard({ kit, onReturnKit }: { kit: TeamKit; onReturnKit?: (kit: TeamKit) => void }) {
   return (
-    <Card className="min-w-[300px] max-w-[340px] flex-shrink-0 snap-start">
+    <Card className="w-full md:min-w-[300px] md:max-w-[340px] flex-shrink-0 snap-start">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-[#4EB5E8]/20 flex items-center justify-center flex-shrink-0">
@@ -164,7 +164,7 @@ export function TeamKitCard({ kit, onReturnKit }: { kit: TeamKit; onReturnKit?: 
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs gap-1"
+              className="min-h-[44px] sm:min-h-0 h-8 sm:h-7 text-xs gap-1"
               onClick={() => onReturnKit(kit)}
             >
               <RotateCcw className="h-3 w-3" />
