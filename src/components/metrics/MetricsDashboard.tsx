@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
   AreaChart, Area,
 } from 'recharts';
 import { TrendingUp, Loader2, ArrowDownCircle, ArrowUpCircle, Layers } from 'lucide-react';
@@ -15,28 +14,6 @@ const DATE_RANGES: { value: DateRange; label: string }[] = [
   { value: '90d', label: '90 Days' },
   { value: 'all', label: 'All Time' },
 ];
-
-const CATEGORY_COLORS: Record<string, string> = {
-  camera: '#4EB5E8',
-  audio: '#A7001E',
-  lens: '#22c55e',
-  tripod: '#f59e0b',
-  light: '#8b5cf6',
-  'extension cable': '#ec4899',
-  accessories: '#06b6d4',
-  'sd card': '#f97316',
-  batteries: '#14b8a6',
-  case: '#6366f1',
-};
-
-const PIE_COLORS = ['#4EB5E8', '#A7001E', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'];
-
-function formatDuration(hours: number): string {
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  const days = Math.floor(hours / 24);
-  const remaining = Math.round(hours % 24);
-  return remaining > 0 ? `${days}d ${remaining}h` : `${days}d`;
-}
 
 function formatPeriodLabel(period: string): string {
   // "2026-03-25" → "Mar 25" or "2026-03" → "Mar 2026"
@@ -200,92 +177,6 @@ export function MetricsDashboard() {
                     }}
                   />
                   <Bar dataKey="checkout_count" fill="#4EB5E8" radius={[0, 4, 4, 0]} name="Checkouts" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Category breakdown */}
-        {metrics.categoryUsage.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Category Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={metrics.categoryUsage}
-                    dataKey="checkout_count"
-                    nameKey="category"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    innerRadius={45}
-                    paddingAngle={2}
-                    label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name || ''} ${((percent || 0) * 100).toFixed(0)}%`
-                    }
-                    labelLine={{ stroke: '#6b7280' }}
-                  >
-                    {metrics.categoryUsage.map((entry, i) => (
-                      <Cell
-                        key={entry.category}
-                        fill={CATEGORY_COLORS[entry.category] || PIE_COLORS[i % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(222 47% 11%)',
-                      border: '1px solid hsl(220 13% 26%)',
-                      borderRadius: '8px',
-                      color: '#f3f4f6',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Second two-column row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Average checkout duration */}
-        {metrics.avgDurations.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Avg Checkout Duration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={Math.max(200, metrics.avgDurations.length * 36)}>
-                <BarChart data={metrics.avgDurations} layout="vertical" margin={{ left: 0, right: 16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 26%)" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
-                    tickFormatter={(v: number) => formatDuration(v)}
-                  />
-                  <YAxis
-                    dataKey="equipment_name"
-                    type="category"
-                    tick={{ fontSize: 11 }}
-                    stroke="#6b7280"
-                    width={120}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(222 47% 11%)',
-                      border: '1px solid hsl(220 13% 26%)',
-                      borderRadius: '8px',
-                      color: '#f3f4f6',
-                    }}
-                    formatter={(value: unknown) => [formatDuration(Number(value)), 'Avg Duration']}
-                  />
-                  <Bar dataKey="avg_duration_hours" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Avg Duration" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
