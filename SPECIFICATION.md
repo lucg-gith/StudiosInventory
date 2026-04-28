@@ -11,6 +11,7 @@
 8. [Security](#security)
 9. [Deployment](#deployment)
 10. [Key Technical Patterns](#key-technical-patterns)
+11. [Design System](#design-system)
 
 ---
 
@@ -39,6 +40,7 @@ Professional equipment inventory management system for Citywire Studios to track
 - **Styling**: Tailwind CSS 3.4.1
 - **UI Components**: Radix UI primitives (Dialog, Select, Toast, etc.)
 - **Icons**: Lucide React
+- **Charts**: Recharts
 - **Backend**: Supabase (PostgreSQL, Auth, Storage, Realtime)
 - **Database**: PostgreSQL with Row Level Security (RLS)
 
@@ -598,6 +600,25 @@ Allow managers to add, edit, and delete equipment types and their individual uni
 
 ---
 
+### 14. Equipment Metrics Dashboard
+
+#### Purpose
+Visual analytics on equipment usage patterns across the studio fleet.
+
+#### Features
+- Charts built with Recharts
+- Equipment utilisation over time (check-out frequency per item)
+- Breakdown by category
+- Maintenance rate per equipment type
+- Data fetched in parallel from `transactions`, `equipment`, `equipment_units`, and `maintenance_logs`
+
+#### Technical Details
+- **Component**: `src/components/metrics/MetricsDashboard.tsx`
+- **Hook**: `src/hooks/use-equipment-metrics.ts`
+- **Accessible via**: "Metrics" tab in main navigation
+
+---
+
 ## Database Schema
 
 ### Tables Overview
@@ -875,6 +896,8 @@ src/
 │   │   └── MaintenancePortal.tsx     # Manager maintenance view
 │   ├── history/
 │   │   └── TransactionHistory.tsx    # Audit log
+│   ├── metrics/
+│   │   └── MetricsDashboard.tsx      # Equipment analytics (Recharts)
 │   └── ui/                           # Shadcn/ui components
 │       ├── button.tsx
 │       ├── card.tsx
@@ -892,6 +915,7 @@ src/
 │   ├── use-transactions.ts           # Checkout/checkin
 │   ├── use-reservations.ts           # Soft reservations + heartbeat + auto-clear
 │   ├── use-date-availability.ts      # Overlap detection + date-aware availability
+│   ├── use-equipment-metrics.ts      # Analytics data aggregation
 │   └── use-toast.ts                  # Toast notifications
 ├── lib/
 │   ├── supabase.ts                   # Supabase client
@@ -1109,6 +1133,27 @@ Outputs to `dist/` directory.
 - Add E2E tests (Playwright or Cypress)
 - Optimize bundle size (code splitting)
 - Add offline support (PWA)
+
+---
+
+## Design System
+
+### Citywire Brand Colors
+- **Primary Red:** `#A7001E` — CTAs, highlights, branding
+- **Off-Black:** `#1E0F1C` — Text, dark UI elements
+- **White:** `#FFFFFF` — Backgrounds
+- **Black:** `#000000` — Strong contrast
+
+### Typography
+- **Headings:** Red Hat Display (400, 600, 700)
+- **Body:** Red Hat Text (400, 600, 700)
+- **Supplementary:** Inter (400)
+
+### Design Principles
+- High-contrast dashboard interface
+- Clean, professional aesthetic
+- Minimalist with clear hierarchy
+- Fully responsive (desktop, tablet, mobile)
 
 ---
 
